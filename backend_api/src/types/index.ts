@@ -1,11 +1,17 @@
 // User types
+export enum UserRole {
+  USER = 'user',
+  DRIVER = 'driver',
+  ADMIN = 'admin',
+}
+
 export interface User {
   id: string;
   email?: string;
   phone?: string;
   displayName: string;
   photoURL?: string;
-  role: 'user' | 'driver' | 'admin';
+  role: UserRole;
   kycStatus: 'pending' | 'approved' | 'rejected';
   kycDocuments?: KycDocument[];
   rating?: number;
@@ -34,7 +40,7 @@ export interface Trip {
   totalSeats: number;
   pricePerSeat: number;
   vehicleInfo: VehicleInfo;
-  status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
+  status: 'scheduled' | 'active' | 'in_progress' | 'completed' | 'cancelled';
   bookingIds: string[];
   createdAt: Date;
   updatedAt: Date;
@@ -58,17 +64,42 @@ export interface VehicleInfo {
 }
 
 // Booking types
+export enum BookingStatus {
+  PENDING = 'pending',
+  ACCEPTED = 'accepted',
+  REJECTED = 'rejected',
+  CANCELLED = 'cancelled',
+  COMPLETED = 'completed',
+}
+
+export enum PaymentStatus {
+  PENDING = 'pending',
+  CONFIRMED = 'confirmed',
+  FAILED = 'failed',
+  REFUNDED = 'refunded',
+}
+
+export enum PaymentMethod {
+  ORANGE_MONEY = 'orange_money',
+  STRIPE = 'stripe',
+  WAVE = 'wave',
+  CASH = 'cash',
+}
+
 export interface Booking {
   id: string;
   tripId: string;
   passengerId: string;
-  passengerName: string;
+  passengerName?: string;
   seats: number;
-  totalPrice: number;
-  status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
+  totalAmount: number;
+  totalPrice?: number;
+  status: BookingStatus;
+  paymentStatus: PaymentStatus;
+  paymentMethod: PaymentMethod;
   paymentId?: string;
-  pickupLocation: Location;
-  dropoffLocation: Location;
+  pickupLocation?: Location;
+  dropoffLocation?: Location;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -77,13 +108,11 @@ export interface Booking {
 export interface Payment {
   id: string;
   bookingId: string;
-  userId: string;
   amount: number;
-  currency: string;
-  method: 'orange_money' | 'stripe' | 'wave' | 'cash';
-  status: 'pending' | 'completed' | 'failed' | 'refunded';
+  method: PaymentMethod;
+  status: PaymentStatus;
+  providerRef?: string;
   transactionId?: string;
-  metadata?: Record<string, unknown>;
   createdAt: Date;
   updatedAt: Date;
 }

@@ -1,66 +1,109 @@
-// TODO: Implement payment service
-// - Create payment intent
-// - Process Orange Money webhook
-// - Process Stripe webhook
-// - Handle payment success/failure
-// - Process refunds
-// - Get payment status
-// - Generate receipts
+import { db } from '../config/firebase';
+import { Payment, PaymentStatus, PaymentMethod } from '../types';
+import { DocumentData } from 'firebase-admin/firestore';
+import { BookingService } from './booking.service';
 
-import { Payment } from '../types';
-
-export interface CreatePaymentData {
-  bookingId: string;
-  userId: string;
-  amount: number;
-  currency: string;
-  method: 'orange_money' | 'stripe' | 'wave' | 'cash';
+function paymentFromData(id: string, data: DocumentData): Payment {
+  return {
+    id,
+    bookingId: data.bookingId,
+    amount: data.amount,
+    method: data.method,
+    status: data.status,
+    providerRef: data.providerRef,
+    createdAt: data.createdAt?.toDate?.() || new Date(),
+    updatedAt: data.updatedAt?.toDate?.() || new Date(),
+  };
 }
 
 export class PaymentService {
-  async createPayment(data: CreatePaymentData): Promise<Payment> {
-    throw new Error('Not implemented');
+  private bookingService = new BookingService();
+
+  async createPayment(bookingId: string, amount: number, method: PaymentMethod): Promise<Payment> {
+    const paymentData = {
+      bookingId,
+      amount,
+      method,
+      status: PaymentStatus.PENDING,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    const docRef = await db.collection('payments').add(paymentData);
+    return paymentFromData(docRef.id, paymentData);
   }
 
   async getPaymentById(paymentId: string): Promise<Payment | null> {
-    throw new Error('Not implemented');
+    const doc = await db.collection('payments').doc(paymentId).get();
+    if (!doc.exists) return null;
+    return paymentFromData(doc.id, doc.data());
   }
 
   async getPaymentByBookingId(bookingId: string): Promise<Payment | null> {
-    throw new Error('Not implemented');
+    const snapshot = await db.collection('payments')
+      .where('bookingId', '==', bookingId)
+      .limit(1)
+      .get();
+    if (snapshot.empty) return null;
+    return paymentFromData(snapshot.docs[0].id, snapshot.docs[0].data());
   }
 
-  async processOrangeMoneyWebhook(payload: Record<string, unknown>): Promise<void> {
-    throw new Error('Not implemented');
+  async confirmPayment(paymentId: string, providerRef: string): Promise<Payment> {
+    await db.collection('payments').doc(paymentId).update({
+      status: PaymentStatus.CONFIRMED,
+      providerRef,
+      updatedAt: new Date(),
+    });
+
+    const payment = await this.getPaymentById(paymentId);
+    if (payment) {
+      await this.bookingService.confirmPayment(payment.bookingId, providerRef);
+    }
+
+    return payment!;
   }
 
-  async processStripeWebhook(payload: Record<string, unknown>): Promise<void> {
-    throw new Error('Not implemented');
+  async failPayment(paymentId: string): Promise<void> {
+    await db.collection('payments').doc(paymentId).update({
+      status: PaymentStatus.FAILED,
+      updatedAt: new Date(),
+    });
   }
 
-  async confirmPayment(paymentId: string, transactionId: string): Promise<void> {
-    throw new Error('Not implemented');
+  // Orange Money webhook simulation (mock - real integration needs Orange API credentials)
+  async handleOrangeWebhook(payload: {
+    transactionId: string;
+    status: string;
+    amount: number;
+    bookingId: string;
+  }): Promise<{ success: boolean; message: string }> {
+    const payment = await this.getPaymentByBookingId(payload.bookingId);
+    if (!payment) return { success: false, message: 'Payment not found' };
+
+    if (payload.status === 'SUCCESS') {
+      await this.confirmPayment(payment.id, payload.transactionId);
+      return { success: true, message: 'Payment confirmed' };
+    } else {
+      await this.failPayment(payment.id);
+      return { success: false, message: 'Payment failed' };
+    }
   }
 
-  async failPayment(paymentId: string, reason: string): Promise<void> {
-    throw new Error('Not implemented');
-  }
+  // Stripe webhook simulation (mock - real integration needs Stripe SDK)
+  async handleStripeWebhook(payload: {
+    paymentIntentId: string;
+    status: string;
+    amount: number;
+    bookingId: string;
+  }): Promise<{ success: boolean; message: string }> {
+    const payment = await this.getPaymentByBookingId(payload.bookingId);
+    if (!payment) return { success: false, message: 'Payment not found' };
 
-  async refundPayment(paymentId: string): Promise<void> {
-    throw new Error('Not implemented');
-  }
-
-  async generateReceipt(paymentId: string): Promise<string> {
-    throw new Error('Not implemented');
-  }
-
-  async initiateOrangeMoneyPayment(amount: number, phone: string, reference: string): Promise<{ checkoutUrl: string }> {
-    throw new Error('Not implemented');
-  }
-
-  async initiateStripePayment(amount: number, currency: string, bookingId: string): Promise<{ clientSecret: string }> {
-    throw new Error('Not implemented');
+    if (payload.status === 'succeeded') {
+      await this.confirmPayment(payment.id, payload.paymentIntentId);
+      return { success: true, message: 'Payment confirmed' };
+    } else {
+      await this.failPayment(payment.id);
+      return { success: false, message: 'Payment failed' };
+    }
   }
 }
-
-export const paymentService = new PaymentService();
