@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "794058419793",
+    "project_id": "soore-covoiturage",
+    "storage_bucket": "soore-covoiturage.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:794058419793:android:0861c9ebefb27c911a5270",
+        "android_client_info": {
+          "package_name": "com.fasocovoiturage.com"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAzqAT93QqgqkJVdIn6vW1wDPmmDTmuGfw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
