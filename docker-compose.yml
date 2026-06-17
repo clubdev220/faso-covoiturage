@@ -1,0 +1,71 @@
+# Faso Covoiturage - Backend API
+# Docker Compose for local development with Firebase Emulators
+
+services:
+  # Backend API (Node.js + Express)
+  backend:
+    build:
+      context: ./backend_api
+      dockerfile: Dockerfile
+    container_name: faso-covoiturage-backend
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - FIREBASE_PROJECT_ID=faso-covoiturage-dev
+      - FIREBASE_AUTH_EMULATOR_HOST=firebase-auth:9099
+      - FIRESTORE_EMULATOR_HOST=firestore:8080
+    depends_on:
+      - firebase-auth
+      - firestore
+    volumes:
+      - ./backend_api:/app
+      - /app/node_modules
+    command: npm run dev
+    networks:
+      - faso-net
+
+  # Firebase Auth Emulator
+  firebase-auth:
+    image: franekdev/firebase-emulators:latest
+    container_name: faso-firebase-auth
+    ports:
+      - "9099:9099"
+    environment:
+      - PROJECT_ID=faso-covoiturage-dev
+    volumes:
+      - ./firebase/emulators/auth:/data
+    networks:
+      - faso-net
+
+  # Firestore Emulator
+  firestore:
+    image: franekdev/firebase-emulators:latest
+    container_name: faso-firestore
+    ports:
+      - "8080:8080"
+    environment:
+      - PROJECT_ID=faso-covoiturage-dev
+    volumes:
+      - ./firebase/emulators/firestore:/data
+    networks:
+      - faso-net
+
+  # Firestore UI (optional - for debugging)
+  firestore-ui:
+    image: gilbitron/firestore-ui:latest
+    container_name: faso-firestore-ui
+    ports:
+      - "3001:3000"
+    environment:
+      - FIREBASE_PROJECT_ID=faso-covoiturage-dev
+      - FIRESTORE_EMULATOR_HOST=firestore:8080
+    depends_on:
+      - firestore
+    networks:
+      - faso-net
+
+networks:
+  faso-net:
+    driver: bridge
