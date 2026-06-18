@@ -1,27 +1,24 @@
 class AppException implements Exception {
   final String message;
   final int? statusCode;
-
   AppException(this.message, {this.statusCode});
-
   @override
   String toString() => message;
 }
 
 class NetworkException extends AppException {
-  NetworkException([String message = 'Network error occurred']) : super(message);
+  NetworkException([String message = 'Erreur de connexion']) : super(message, statusCode: 0);
 }
 
 class AuthException extends AppException {
-  AuthException([String message = 'Authentication failed']) : super(message, statusCode: 401);
+  AuthException([String message = 'Identifiants incorrects']) : super(message, statusCode: 401);
 }
 
 class ServerException extends AppException {
-  ServerException([String message = 'Server error occurred']) : super(message, statusCode: 500);
+  ServerException([String message = 'Erreur serveur']) : super(message, statusCode: 500);
 }
 
 class ValidationException extends AppException {
-  final Map<String, String>? errors;
-
-  ValidationException(String message, {this.errors}) : super(message, statusCode: 400);
+  final Map<String, String>? fieldErrors;
+  ValidationException(String message, {this.fieldErrors}) : super(message, statusCode: 400);
 }
