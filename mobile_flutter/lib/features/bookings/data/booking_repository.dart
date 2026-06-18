@@ -1,70 +1,31 @@
-import 'package:dio/dio.dart';
+import 'booking_service.dart';
 
 class BookingRepository {
-  final Dio _dio;
+  final BookingService _bookingService;
+  BookingRepository(this._bookingService);
 
-  BookingRepository(this._dio);
-
-  /// Book a seat on a trip
-  Future<String> bookTrip({
-    required String tripId,
-    required int seats,
-    String? message,
-  }) async {
-    final response = await _dio.post('/bookings', data: {
-      'tripId': tripId,
-      'seats': seats,
-      'message': message,
-    });
-    return response.data['bookingId'] as String;
+  Future<Map<String, dynamic>> createBooking(String token, String tripId, int seats, String paymentMethod) {
+    return _bookingService.createBooking(token, tripId, seats, paymentMethod);
   }
 
-  /// Get booking details
-  Future<Map<String, dynamic>> getBookingById(String bookingId) async {
-    final response = await _dio.get('/bookings/$bookingId');
-    return response.data as Map<String, dynamic>;
+  Future<List<dynamic>> getMyBookings(String token) {
+    return _bookingService.getMyBookings(token);
   }
 
-  /// Get user's bookings (passenger)
-  Future<List<Map<String, dynamic>>> getUserBookings({
-    String? status,
-  }) async {
-    final response = await _dio.get('/bookings/my-bookings', queryParameters: {
-      if (status != null) 'status': status,
-    });
-    return List<Map<String, dynamic>>.from(response.data['bookings']);
+  Future<void> updateBookingStatus(String token, String bookingId, String status) {
+    return _bookingService.updateBookingStatus(token, bookingId, status);
   }
 
-  /// Get trip bookings (driver)
-  Future<List<Map<String, dynamic>>> getTripBookings(String tripId) async {
-    final response = await _dio.get('/bookings/trip/$tripId');
-    return List<Map<String, dynamic>>.from(response.data['bookings']);
+  Future<List<dynamic>> getTripBookings(String token, String tripId) {
+    return _bookingService.getTripBookings(token, tripId);
   }
 
-  /// Cancel a booking
-  Future<void> cancelBooking(String bookingId) async {
-    await _dio.delete('/bookings/$bookingId');
+  // Aliases for screen compatibility
+  Future<void> confirmBooking(String token, String bookingId) {
+    return _bookingService.updateBookingStatus(token, bookingId, 'confirmed');
   }
 
-  /// Confirm a booking (driver)
-  Future<void> confirmBooking(String bookingId) async {
-    await _dio.patch('/bookings/$bookingId/confirm');
-  }
-
-  /// Reject a booking (driver)
-  Future<void> rejectBooking(String bookingId) async {
-    await _dio.patch('/bookings/$bookingId/reject');
-  }
-
-  /// Rate a trip after completion
-  Future<void> rateTrip({
-    required String bookingId,
-    required int rating,
-    String? comment,
-  }) async {
-    await _dio.post('/bookings/$bookingId/rate', data: {
-      'rating': rating,
-      'comment': comment,
-    });
+  Future<void> rejectBooking(String token, String bookingId) {
+    return _bookingService.updateBookingStatus(token, bookingId, 'rejected');
   }
 }

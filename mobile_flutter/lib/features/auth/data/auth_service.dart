@@ -5,16 +5,27 @@ class AuthService {
   final Dio _dio;
   final SharedPreferences _prefs;
   static const String _tokenKey = 'auth_token';
+  static const String _userKey = 'auth_user';
 
   AuthService(this._dio, this._prefs);
 
-  Future<Map<String, dynamic>> loginWithEmail(String email, String password) async {
+  // Token management
+  Future<String?> getStoredToken() async => _prefs.getString(_tokenKey);
+
+  Future<void> saveToken(String token) async => await _prefs.setString(_tokenKey, token);
+
+  Future<void> clearToken() async {
+    await _prefs.remove(_tokenKey);
+    await _prefs.remove(_userKey);
+  }
+
+  // Auth operations
+  Future<String> loginWithEmail(String email, String password) async {
     try {
       final response = await _dio.post('/auth/email/login', data: {'email': email, 'password': password});
       final token = response.data['token'] as String;
-      final user = response.data['user'];
-      await _prefs.setString(_tokenKey, token);
-      return {'token': token, 'user': user};
+      await saveToken(token);
+      return token;
     } on DioException catch (e) { throw _handleError(e); }
   }
 
@@ -24,35 +35,26 @@ class AuthService {
     } on DioException catch (e) { throw _handleError(e); }
   }
 
-  Future<Map<String, dynamic>> verifyPhoneOtp(String phone, String code) async {
+  Future<String> verifyPhoneOtp(String phone, String code) async {
     try {
       final response = await _dio.post('/auth/phone/verify', data: {'phone': phone, 'code': code});
       final token = response.data['token'] as String;
-      final user = response.data['user'];
-      await _prefs.setString(_tokenKey, token);
-      return {'token': token, 'user': user};
+      await saveToken(token);
+      return token;
     } on DioException catch (e) { throw _handleError(e); }
   }
 
-  Future<Map<String, dynamic>> registerWithEmail(String email, String password, String displayName, String phone) async {
+  Future<void> registerWithEmail({required String email, required String password, required String fullName, String? phone}) async {
     try {
-      final response = await _dio.post('/auth/email/register', data: {'email': email, 'password': password, 'displayName': displayName, 'phone': phone});
-      final token = response.data['token'] as String;
-      final user = response.data['user'];
-      await _prefs.setString(_tokenKey, token);
-      return {'token': token, 'user': user};
+      await _dio.post('/auth/email/register', data: {'email': email, 'password': password, 'fullName': fullName, 'phone': phone});
     } on DioException catch (e) { throw _handleError(e); }
   }
-
-  Future<String?> getStoredToken() async => _prefs.getString(_tokenKey);
-
-  Future<void> clearToken() async => await _prefs.remove(_tokenKey);
 
   Future<Map<String, dynamic>?> getCurrentUser(String token) async {
     try {
       final response = await _dio.get('/users/me', options: Options(headers: {'Authorization': 'Bearer $token'}));
-      return response.data['user'];
-    } catch { return null; }
+      return response.data['user'] as Map<String, dynamic>?;
+    } catch (e) { return null; }
   }
 
   Exception _handleError(DioException e) {

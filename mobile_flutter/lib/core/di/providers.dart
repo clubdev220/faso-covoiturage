@@ -12,8 +12,6 @@ final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
   throw UnimplementedError('Initialize in main.dart');
 });
 
-final dioProvider = Provider<Dio>((ref) => throw UnimplementedError());
-
 final authServiceProvider = Provider<AuthService>((ref) {
   return AuthService(ref.watch(dioProvider), ref.watch(sharedPreferencesProvider));
 });
@@ -68,7 +66,7 @@ class UserModel {
     return UserModel(
       id: json['id'] ?? json['uid'] ?? '',
       phone: json['phone'] ?? '',
-      displayName: json['displayName'],
+      displayName: json['displayName'] ?? json['fullName'],
       email: json['email'],
       role: json['role'] ?? 'passenger',
       kycStatus: json['kycStatus'] ?? 'none',
@@ -86,9 +84,14 @@ class AuthStateNotifier extends StateNotifier<AuthState> {
     final token = await _authRepository.getStoredToken();
     if (token != null) {
       try {
-        final user = await _authRepository.getCurrentUser(token);
-        if (user != null) state = state.copyWith(isAuthenticated: true, user: user, token: token);
-      } catch { await _authRepository.clearToken(); state = AuthState(); }
+        final userData = await _authRepository.getCurrentUser(token);
+        if (userData != null) {
+          state = state.copyWith(isAuthenticated: true, user: UserModel.fromJson(userData), token: token);
+        }
+      } catch (e) {
+        await _authRepository.clearToken();
+        state = AuthState();
+      }
     }
   }
 
@@ -96,7 +99,7 @@ class AuthStateNotifier extends StateNotifier<AuthState> {
     state = state.copyWith(isLoading: true, error: null);
     try {
       final result = await _authRepository.loginWithEmail(email, password);
-      state = state.copyWith(isLoading: false, isAuthenticated: true, user: result['user'], token: result['token']);
+      state = state.copyWith(isLoading: false, isAuthenticated: true, token: result);
     } catch (e) { state = state.copyWith(isLoading: false, error: e.toString()); }
   }
 
@@ -111,16 +114,16 @@ class AuthStateNotifier extends StateNotifier<AuthState> {
   Future<void> verifyPhoneOtp(String phone, String code) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
-      final result = await _authRepository.verifyPhoneOtp(phone, code);
-      state = state.copyWith(isLoading: false, isAuthenticated: true, user: result['user'], token: result['token']);
+      final token = await _authRepository.verifyPhoneOtp(phone, code);
+      state = state.copyWith(isLoading: false, isAuthenticated: true, token: token);
     } catch (e) { state = state.copyWith(isLoading: false, error: e.toString()); }
   }
 
   Future<void> register(String email, String password, String displayName, String phone) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
-      final result = await _authRepository.registerWithEmail(email, password, displayName, phone);
-      state = state.copyWith(isLoading: false, isAuthenticated: true, user: result['user'], token: result['token']);
+      await _authRepository.registerWithEmail(email: email, password: password, fullName: displayName, phone: phone);
+      state = state.copyWith(isLoading: false, isAuthenticated: true);
     } catch (e) { state = state.copyWith(isLoading: false, error: e.toString()); }
   }
 

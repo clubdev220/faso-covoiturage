@@ -1,61 +1,26 @@
-import 'package:dio/dio.dart';
+import 'auth_service.dart';
 
 class AuthRepository {
-  final Dio _dio;
+  final AuthService _authService;
 
-  AuthRepository(this._dio);
+  AuthRepository(this._authService);
 
-  /// Send OTP to phone number
-  Future<void> sendPhoneOtp(String phoneNumber) async {
-    await _dio.post('/auth/phone/send-otp', data: {'phone': phoneNumber});
-  }
+  Future<String> loginWithEmail(String email, String password) =>
+      _authService.loginWithEmail(email, password);
 
-  /// Verify phone OTP
-  Future<String> verifyPhoneOtp(String phoneNumber, String otp) async {
-    final response = await _dio.post('/auth/phone/verify-otp', data: {
-      'phone': phoneNumber,
-      'otp': otp,
-    });
-    return response.data['token'] as String;
-  }
+  Future<void> sendPhoneOtp(String phone) =>
+      _authService.sendPhoneOtp(phone);
 
-  /// Login with email and password
-  Future<String> loginWithEmail(String email, String password) async {
-    final response = await _dio.post('/auth/email/login', data: {
-      'email': email,
-      'password': password,
-    });
-    return response.data['token'] as String;
-  }
+  Future<String> verifyPhoneOtp(String phone, String code) =>
+      _authService.verifyPhoneOtp(phone, code);
 
-  /// Register with email
-  Future<void> registerWithEmail({
-    required String email,
-    required String password,
-    required String fullName,
-    String? phone,
-  }) async {
-    await _dio.post('/auth/email/register', data: {
-      'email': email,
-      'password': password,
-      'fullName': fullName,
-      'phone': phone,
-    });
-  }
+  Future<void> registerWithEmail({required String email, required String password, required String fullName, String? phone}) =>
+      _authService.registerWithEmail(email: email, password: password, fullName: fullName, phone: phone);
 
-  /// Logout
-  Future<void> logout() async {
-    await _dio.post('/auth/logout');
-  }
+  Future<String?> getStoredToken() => _authService.getStoredToken();
 
-  /// Get current user profile
-  Future<Map<String, dynamic>> getCurrentUser() async {
-    final response = await _dio.get('/auth/me');
-    return response.data as Map<String, dynamic>;
-  }
+  Future<void> clearToken() => _authService.clearToken();
 
-  /// Update user profile
-  Future<void> updateProfile(Map<String, dynamic> data) async {
-    await _dio.patch('/auth/profile', data: data);
-  }
+  Future<Map<String, dynamic>?> getCurrentUser(String token) =>
+      _authService.getCurrentUser(token);
 }
